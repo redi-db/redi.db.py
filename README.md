@@ -8,8 +8,8 @@ db = RediDB({
     'login': 'root',
     'password: 'root',
     
-    'ip: 'localhost',
-    'port: 5000
+    'ip': 'localhost',
+    'port': 5000
 })#.test_connect()
 
 db.test_connect()
