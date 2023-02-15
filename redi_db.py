@@ -48,6 +48,7 @@ class __Collection__:
 
   def search_one(self, filter = {}):
     try:
+      filter['$max'] = 1
       response = self.db.fetch.post(f'{self.db.url}/search', json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
