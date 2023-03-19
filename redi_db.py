@@ -10,8 +10,6 @@ class RediDB:
 
   def set_database(self, database: str = 'admin'):
     self.database = database
-    self.url += f'/{database}'
-
     return __Collection__(self)
 
 class __Collection__:
@@ -22,13 +20,11 @@ class __Collection__:
 
   def set_collection(self, collection: str = 'test'):
     self.db.collection = collection
-    self.db.url += f'/{collection}'
-
     return self
 
   def create(self, *data):
     try:
-      response = self.db.fetch.post(f'{self.db.url}/create', json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': data}).json()
+      response = self.db.fetch.post(f'{self.db.url}/create', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': data}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
         raise Exception(response.get('message'))
@@ -38,7 +34,7 @@ class __Collection__:
 
   def search(self, filter = {}):
     try:
-      response = self.db.fetch.post(f'{self.db.url}/search', json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
+      response = self.db.fetch.post(f'{self.db.url}/search', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
         raise Exception(response.get('message'))
@@ -49,7 +45,7 @@ class __Collection__:
   def search_one(self, filter = {}):
     try:
       filter['$max'] = 1
-      response = self.db.fetch.post(f'{self.db.url}/search', json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
+      response = self.db.fetch.post(f'{self.db.url}/search', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
         raise Exception(response.get('message'))
@@ -58,12 +54,12 @@ class __Collection__:
         raise Exception('Not Found')
 
       return response[0]
-    except:
+    except Exception as err:
       raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
 
   def delete(self, filter = {}):
     try:
-      response = self.db.fetch.delete(self.db.url, json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
+      response = self.db.fetch.delete(self.db.url, json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
         raise Exception(response.get('message'))
@@ -74,7 +70,7 @@ class __Collection__:
   
   def update(self, filter = {}, update = {}):
     try:
-      response = self.db.fetch.put(self.db.url, json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': {'filter': filter, 'update': update}}).json()
+      response = self.db.fetch.put(self.db.url, json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': {'filter': filter, 'update': update}}).json()
       
       if not hasattr(response, '__len__') and response.get('success', None) == False:
         raise Exception(response.get('message'))
@@ -87,7 +83,7 @@ class __Collection__:
   
   def search_or_create(self, filter, create = {}):
     try:
-      response = self.db.fetch.post(f'{self.db.url}/searchOrCreate', json={'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter, 'data': create}).json()
+      response = self.db.fetch.post(f'{self.db.url}/searchOrCreate', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter, 'data': create}).json()
       
       if response.get('success', None) == False:
         raise Exception(response.get('message'))
