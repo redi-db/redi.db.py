@@ -18,75 +18,62 @@ class __Collection__:
       raise Exception('The database name parameter is invalid')
     self.db = data
 
+  def req(self, path: str, method, body: object):
+    response = None
+    try:
+      body['database'] = self.db.database
+      body['collection'] = self.db.collection
+      body['login'] = self.db.authorization_data.get('login')
+      body['password'] =  self.db.authorization_data.get('password')
+
+      response = eval(f"""self.db.fetch.{method}(f'{self.db.url}/{path}', json=body).json()""")
+    except:
+      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
+    
+    if type(response) != list and response.get('success', None) == False:
+        raise Exception(response.get('message'))
+    return response
+
   def set_collection(self, collection: str = 'test'):
     self.db.collection = collection
     return self
-
-  def create(self, *data):
-    try:
-      response = self.db.fetch.post(f'{self.db.url}/create', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': data}).json()
-      
-      if not hasattr(response, '__len__') and response.get('success', None) == False:
-        raise Exception(response.get('message'))
-      return response
-    except:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
-
-  def search(self, filter = {}):
-    try:
-      response = self.db.fetch.post(f'{self.db.url}/search', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
-      
-      if not hasattr(response, '__len__') and response.get('success', None) == False:
-        raise Exception(response.get('message'))
-      return response
-    except:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
-
-  def search_one(self, filter = {}):
-    try:
-      filter['$max'] = 1
-      response = self.db.fetch.post(f'{self.db.url}/search', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
-      
-      if not hasattr(response, '__len__') and response.get('success', None) == False:
-        raise Exception(response.get('message'))
-
-      if len(response) == 0:
-        raise Exception('Not Found')
-
-      return response[0]
-    except Exception as err:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
-
-  def delete(self, filter = {}):
-    try:
-      response = self.db.fetch.delete(self.db.url, json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter}).json()
-      
-      if not hasattr(response, '__len__') and response.get('success', None) == False:
-        raise Exception(response.get('message'))
-
-      return response
-    except:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
   
-  def update(self, filter = {}, update = {}):
-    try:
-      response = self.db.fetch.put(self.db.url, json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'data': {'filter': filter, 'update': update}}).json()
-      
-      if not hasattr(response, '__len__') and response.get('success', None) == False:
-        raise Exception(response.get('message'))
-      if len(response) == 0:
-        raise Exception('Not Found')
+  def count(self, filter:object = {}) -> int:
+    return len(self.search(filter))
 
-      return response
-    except:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
+  def create(self, *data) -> list:
+    return self.req('create', 'post', {
+      'data': data
+    })
+
+  def search(self, filter = {}) -> list:
+    return self.req('search', 'post', {
+      'filter': filter
+    })
+
+  def search_one(self, filter = {}) -> None | object:
+    filter['$max'] = 1
+    response = self.search(filter)
+    if len(response) == 0:
+      return None
   
-  def search_or_create(self, filter, create = {}):
-    try:
-      response = self.db.fetch.post(f'{self.db.url}/searchOrCreate', json={'database': self.db.database, 'collection': self.db.collection, 'login': self.db.authorization_data.get('login'), 'password': self.db.authorization_data.get('password'), 'filter': filter, 'data': create}).json()
-      
-      if response.get('success', None) == False:
-        raise Exception(response.get('message'))
-      return response
-    except:
-      raise Exception(f'Connection to database {self.db.database}/{self.db.collection} failed')
+    return response[0]
+
+  def delete(self, filter = {}) -> list:
+    return self.req('', 'delete', {
+      'filter': filter
+    })
+  
+  def update(self, filter = {}, update = {}) -> list:
+    return self.req('', 'put', {
+      'data': {
+        'filter': filter,
+        'update': update
+      }
+    })
+  
+  def search_or_create(self, filter, create = {}) -> object:
+    return self.req('searchOrCreate', 'post', {
+      'filter': filter,
+      'data': create
+    })
