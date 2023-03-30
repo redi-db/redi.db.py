@@ -65,6 +65,14 @@ class __Collection__:
     })
   
   def update(self, filter = {}, update = {}) -> list:
+    return self.req('', 'patch', {
+      'data': {
+        'filter': filter,
+        'update': update
+      }
+    })
+  
+  def instant_update(self, filter = {}, update = {}) -> list:
     return self.req('', 'put', {
       'data': {
         'filter': filter,
