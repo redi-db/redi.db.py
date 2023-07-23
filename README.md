@@ -6,7 +6,7 @@ Library for working with RediDB in Python
 
 ```python
 from redi_db import RediDB
-db = RediDB({
+client = RediDB({
     'login': 'root',
     'password': 'root',
 
@@ -15,7 +15,8 @@ db = RediDB({
     'port': 5000
 })
 
-exampleCollection = db.set_database('ExampleProject').set_collection('exampleCollection')
+exampleDatabase = client.set_database('exampleDatabase')
+exampleCollection = exampleDatabase.invoke().set_collection('exampleCollection')
 ```
 
 <br><br>
@@ -67,6 +68,19 @@ exampleCollection.delete({}) # Filter, if empty drop all collection
 # Updating elements by filter
 # exampleCollection.update(filter, update)
 exampleCollection.update({'id': 1}, {
+      'id': 1
+  },
+
+  {
+      'isExampleValue': False
+  }
+)
+```
+
+```py
+# Instant updating of elements by filter
+# exampleCollection.update(filter, update)
+exampleCollection.instant_update({'id': 1}, {
       'id': 1
   },
 
