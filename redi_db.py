@@ -119,6 +119,7 @@ class __Collection__:
         if not data.database:
             raise Exception('The database name parameter is invalid')
         self.db = data
+        self.distributors = {}
 
     def req(self, path: str, method, body: object):
         response = None
@@ -137,6 +138,32 @@ class __Collection__:
 
         if type(response) != list and response.get('success', None) == False:
             raise Exception(response.get('message'))
+        
+        if body["distributorID"] is not None:
+            return response
+        
+        if type(response) == dict and response.get('distribute', False):
+            _distributorID = response.get('distributorID')
+            response = None
+
+            self.distributors[_distributorID] = {
+                'documents': [],
+                'residue': 1
+            }
+
+            while self.distributors[_distributorID].get('residue') > 0:
+                distributor = self.distributors.get(_distributorID)
+                response = self.req(path, method, { 'distributorID': _distributorID})
+
+                distributor['documents'].extend(response.get('data', []))
+                distributor['residue'] = response.get('residue', 0)
+
+            
+            documents = self.distributors[_distributorID].get('documents')
+
+            del self.distributors[_distributorID]
+            return documents
+        
         return response
 
     def set_collection(self, collection: str = 'test'):
@@ -148,27 +175,77 @@ class __Collection__:
         return len(await self.search(filter))
 
     async def create(self, *data):
+        return await self._create(data)
+
+    async def _create(self, data, distributorID=None):
         if self.db.client.protocol == 'ws':
             data = await self.db.client.websocket_request(
-                self.db.database, self.collection, 'create', {}, {'data': data})
-            return data.get('data')
+                self.db.database, self.collection, 'create', {}, {'data': data, 'distributorID': distributorID if distributorID is not None else '' })
+            if len(data.get('distributorID')) == 0 and distributorID is None:
+                    return data.get('data')
+            elif distributorID is not None:
+                    return data
+            else:
+                _distributorID = data.get('distributorID')
+                self.distributors[_distributorID] = {
+                    'documents': [],
+                    'residue': 1
+                }
+
+                while self.distributors[_distributorID].get('residue') > 0:
+                    distributor = self.distributors.get(_distributorID)
+                    response = await self._create([], _distributorID)
+
+                    distributor['documents'].extend(response.get('data', []))
+                    distributor['residue'] = response.get('residue', 0)
+
+                
+                documents = self.distributors[_distributorID].get('documents')
+
+                del self.distributors[_distributorID]
+                return documents
+                
 
         return self.req('create', 'post', {
-            'data': data
+            'data': data,
+            'distributorID': distributorID
         })
 
-    async def search(self, filter={}):
+    async def search(self, filter={}, distributorID = None):
         if self.db.client.protocol == 'ws':
-            data = await self.db.client.websocket_request(self.db.database, self.collection, 'search', filter, {})
-            return data.get('data')
+            data = await self.db.client.websocket_request(self.db.database, self.collection, 'search', filter, {'distributorID': distributorID if distributorID is not None else '' })
+            
+            if len(data.get('distributorID')) == 0 and distributorID is None:
+                    return data.get('data')
+            elif distributorID is not None:
+                    return data
+            else:
+                _distributorID = data.get('distributorID')
+                self.distributors[_distributorID] = {
+                    'documents': [],
+                    'residue': 1
+                }
+
+                while self.distributors[_distributorID].get('residue') > 0:
+                    distributor = self.distributors.get(_distributorID)
+                    response = await self.search({}, _distributorID)
+
+                    distributor['documents'].extend(response.get('data', []))
+                    distributor['residue'] = response.get('residue', 0)
+
+                
+                documents = self.distributors[_distributorID].get('documents')
+
+                del self.distributors[_distributorID]
+                return documents
 
         return self.req('search', 'post', {
-            'filter': filter
+            'filter': filter,
+            'distributorID': distributorID
         })
 
     async def search_one(self, filter={}):
-        if not filter.get('$lt') and not filter.get('$gt'):
-            filter['$max'] = 1
+        filter['$max'] = 1
 
         response = await self.search(filter)
         if len(response) == 0:
@@ -176,33 +253,106 @@ class __Collection__:
 
         return response[0]
 
-    async def delete(self, filter={}):
+    async def delete(self, filter={}, distributorID = None):
         if self.db.client.protocol == 'ws':
-            data = await self.db.client.websocket_request(self.db.database, self.collection, 'delete', filter, {})
-            return data.get('data')
+            data = await self.db.client.websocket_request(self.db.database, self.collection, 'delete', filter, {'distributorID': distributorID if distributorID is not None else ''})
+            
+            if len(data.get('distributorID')) == 0 and distributorID is None:
+                    return data.get('data')
+            elif distributorID is not None:
+                    return data
+            else:
+                _distributorID = data.get('distributorID')
+                self.distributors[_distributorID] = {
+                    'documents': [],
+                    'residue': 1
+                }
+
+                while self.distributors[_distributorID].get('residue') > 0:
+                    distributor = self.distributors.get(_distributorID)
+                    response = await self.delete({}, _distributorID)
+
+                    distributor['documents'].extend(response.get('data', []))
+                    distributor['residue'] = response.get('residue', 0)
+
+                
+                documents = self.distributors[_distributorID].get('documents')
+
+                del self.distributors[_distributorID]
+                return documents
 
         return self.req('', 'delete', {
-            'filter': filter
+            'filter': filter,
+            'distributorID': distributorID
         })
 
-    async def update(self, filter={}, update={}):
+    async def update(self, filter={}, update={}, distributorID = None):
         if self.db.client.protocol == 'ws':
-            data = await self.db.client.websocket_request(self.db.database, self.collection, 'update', filter, {'data': [update]})
-            return data.get('data')
+            data = await self.db.client.websocket_request(self.db.database, self.collection, 'update', filter, {'data': [update], 'distributorID': distributorID if distributorID is not None else ''})
+            
+            if len(data.get('distributorID')) == 0 and distributorID is None:
+                    return data.get('data')
+            elif distributorID is not None:
+                    return data
+            else:
+                _distributorID = data.get('distributorID')
+                self.distributors[_distributorID] = {
+                    'documents': [],
+                    'residue': 1
+                }
+
+                while self.distributors[_distributorID].get('residue') > 0:
+                    distributor = self.distributors.get(_distributorID)
+                    response = await self.update({}, {}, _distributorID)
+
+                    distributor['documents'].extend(response.get('data', []))
+                    distributor['residue'] = response.get('residue', 0)
+
+                
+                documents = self.distributors[_distributorID].get('documents')
+
+                del self.distributors[_distributorID]
+                return documents
 
         return self.req('', 'patch', {
+            'distributorID': distributorID,
+
             'data': {
                 'filter': filter,
                 'update': update
             }
         })
 
-    async def instant_update(self, filter={}, update={}):
+    async def instant_update(self, filter={}, update={}, distributorID = None):
         if self.db.client.protocol == 'ws':
-            data = await self.db.client.websocket_request(self.db.database, self.collection, 'instantUpdate', filter, {'data': [update]})
-            return data.get('data')
+            data = await self.db.client.websocket_request(self.db.database, self.collection, 'instantUpdate', filter, {'data': [update], 'distributorID': distributorID if distributorID is not None else ''})
+            
+            if len(data.get('distributorID')) == 0 and distributorID is None:
+                    return data.get('data')
+            elif distributorID is not None:
+                    return data
+            else:
+                _distributorID = data.get('distributorID')
+                self.distributors[_distributorID] = {
+                    'documents': [],
+                    'residue': 1
+                }
+
+                while self.distributors[_distributorID].get('residue') > 0:
+                    distributor = self.distributors.get(_distributorID)
+                    response = await self.instant_update({}, {}, _distributorID)
+
+                    distributor['documents'].extend(response.get('data', []))
+                    distributor['residue'] = response.get('residue', 0)
+
+                
+                documents = self.distributors[_distributorID].get('documents')
+
+                del self.distributors[_distributorID]
+                return documents
 
         return self.req('', 'put', {
+            'distributorID': distributorID,
             'data': {
                 'filter': filter,
                 'update': update
